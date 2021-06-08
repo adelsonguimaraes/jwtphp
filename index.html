@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT</title>
+
+
+    <style>
+        .error { 
+            padding: 10px;
+            background-color: #ff9d9d;
+            font-weight: bold;
+            color: #902020;
+            margin: 10px 0;
+            display: none;
+        }
+        .error_show {
+            display: block;
+        }
+        .autenticado {
+            display: none;
+            padding: 20px;
+            background-color: cadetblue;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .autenticado_show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="autenticado">
+        <ul>
+            <li>Nome: <span id="nome"></span></li>
+            <li>Cargo: <span id="cargo"></span></li>
+            <li>Pefil: <span id="perfil"></span></li>
+        </ul>
+    </div>
+    <div>
+        Token: <span id="token"></span>
+    </div>
+    <div class="error" id="error"></div>
+    <div>
+        <label for="">User</label> <input type="text" name="user">
+        <label for="">Senha</label> <input type="password" name="pass">
+    </div>
+    <button onclick="autenticar()">Autenticar</button>
+    <button onclick="testar()">Testar</button>
+
+    <script>
+        function autenticar () {
+
+            let obj = {'user':'', 'pass':''};
+            obj.user = document.querySelector('input[name=user]').value;
+            obj.pass = document.querySelector('input[name=pass]').value;
+
+            if (obj.user==='' && obj.pass==='') {
+                return alert('Preencha os campos corretamente!');
+            }
+
+            fetch('./api/user.php', {
+                method: 'POST',
+                body: JSON.stringify(obj)
+            })
+            .then(r => r.json())
+            .then(json => {
+                if (json.success) {
+                    // salvando jwt em local storage
+                    localStorage.setItem('jwt', json.jwt);
+                    document.querySelector('#token').innerHTML = json.jwt;
+                    
+                    // extraindo payload
+                    payload = extractData (json.jwt);
+                    // exibindo dados autenticados
+                    document.querySelector('.autenticado').classList.add('autenticado_show');
+                    document.querySelector('#nome').innerHTML = payload.dados.nome;
+                    document.querySelector('#perfil').innerHTML = payload.dados.perfil;
+                    document.querySelector('#cargo').innerHTML = payload.dados.cargo;
+
+                    // escondendo campo erro
+                    error.innerHTML = '';
+                    error.classList.remove('error_show');
+                }else{
+                    let error = document.querySelector('#error');
+                    error.innerHTML = json.msg;
+                    error.classList.add('error_show');
+                }
+            });
+        }
+        function testar () {
+            let jwt = localStorage.getItem('jwt');
+            
+            if (jwt===null) {
+                let error = document.querySelector('#error');
+                error.innerHTML = 'Token JWT não válido ou expirado!';
+                error.classList.add('error_show');
+                return false;
+            }
+
+            fetch('./api/user.php', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'baerer ' + jwt
+                }
+            })
+            .then(r => r.json())
+            .then(json => {
+                if (json.success) {
+                    // escondendo campo erro
+                    error.innerHTML = '';
+                    error.classList.remove('error_show');
+                    alert('Autorizado!');
+                }else{
+                    localStorage.removeItem('jwt'); // destruindo o token
+                    document.querySelector('#token').innerHTML = ''; // limpando campo token
+                    
+                    // limpando dados autenticados
+                    document.querySelector('.autenticado').classList.remove('autenticado_show');
+                    document.querySelector('#nome').innerHTML = '';
+                    document.querySelector('#perfil').innerHTML = '';
+                    document.querySelector('#cargo').innerHTML = '';
+
+                    let error = document.querySelector('#error');
+                    error.innerHTML = json.msg;
+                    error.classList.add('error_show');
+
+                    alert('Não Autorizado!');
+                }
+            });
+        }
+        function extractData (jwt) {
+            let split = jwt.split('.');
+            let payload = JSON.parse(atob(split[1]));
+            return payload;
+        }
+    </script>
+</body>
+</html>
