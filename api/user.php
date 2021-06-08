@@ -65,7 +65,7 @@ function get () {
     }
 
     $response['success'] = true;
-    $response['data'] = $data;
+    $response['data'] = "";
 
     echo json_encode($response);
 }
